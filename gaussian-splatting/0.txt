@@ -1,0 +1,110 @@
+Output folder: ./output/cc0c691f-2
+Output folder: ./output/1346d71e-d
+[ITER 7000] Evaluating train: L1 0.03358865939080715 PSNR 23.588140106201173
+Output folder: ./output/e585ab07-e
+Output folder: ./output/8f2ef521-d
+[ITER 7000] Evaluating train: L1 0.033283833786845206 PSNR 23.7099910736084
+[ITER 30000] Evaluating train: L1 0.017086270637810232 PSNR 29.910585403442383Output folder: ./output/e8e860bf-0
+Output folder: ./output/7cc7636b-f
+Output folder: ./output/66d082e5-6
+Output folder: ./output/e1ae97f7-1
+Output folder: ./output/1bec9bd9-e
+Output folder: ./output/4600cbc0-5
+Output folder: ./output/d6b1f630-d
+Output folder: ./output/30239150-e
+[ITER 7000] Evaluating train: L1 0.03366174325346947 PSNR 23.501702880859376
+[ITER 30000] Evaluating train: L1 0.018652737140655518 PSNR 29.378396606445314
+Output folder: ./output/c106c7db-9
+Output folder: ./output/9fbf76f9-0
+Output folder: ./output/176c8c79-f
+Output folder: ./output/181a63cc-c
+Output folder: ./output/bd4b8469-3
+Output folder: ./output/6aa6868a-1
+Output folder: ./output/ae86442f-d
+Output folder: ./output/2717e987-d
+Output folder: ./output/70652242-4
+Output folder: ./output/9d453981-3
+Output folder: ./output/b2b7f8dd-b
+Output folder: ./output/26ad93af-9
+Output folder: ./output/1fde2fdd-b
+Output folder: ./output/242d218c-f
+Output folder: ./output/894eca2f-e
+Output folder: ./output/e892abf6-c
+Output folder: ./output/2cd4a566-b
+Output folder: ./output/9545421f-e
+Output folder: ./output/8c5202b6-0
+Output folder: ./output/f2106fbc-3
+Output folder: ./output/8760af84-c
+[ITER 7000] Evaluating train: L1 0.03306767605245114 PSNR 23.533169937133792
+[ITER 30000] Evaluating train: L1 0.020836083218455315 PSNR 27.19930992126465
+Output folder: ./output/9de38802-8
+/home/vrlab/hongyu/data/0712_scene_culturesquare/output
+Output folder: ./output/fe8394ee-4
+[ITER 7000] Evaluating train: L1 0.021498925238847735 PSNR 28.347556304931643
+[ITER 30000] Evaluating train: L1 0.017531271651387216 PSNR 30.107501983642578
+/home/vrlab/hongyu/data/0714_scene_liupanshan/output
+Output folder: ./output/1c42ccda-7
+/home/vrlab/hongyu/data/0716_scene_chengqiangmen/output
+Output folder: ./output/ce338f8c-0
+/home/vrlab/hongyu/data/0716_scene_chengqiangta/output
+Output folder: ./output/f2e5de6a-e
+Output folder: ./output/e62c6568-7
+Output folder: ./output/13c53a68-2
+[ITER 7000] Evaluating train: L1 0.014468873478472234 PSNR 29.872663879394533
+[ITER 30000] Evaluating train: L1 0.0064777228981256485 PSNR 36.69497451782227
+Output folder: ./output/d16ee9fa-c
+Output folder: ./output/1cdab656-c
+[ITER 7000] Evaluating train: L1 0.021616799384355546 PSNR 28.240127563476562
+[ITER 30000] Evaluating train: L1 0.017636801674962045 PSNR 29.945867156982423
+Output folder: ./output/15ed7bf7-a
+/home/vrlab/hongyu/data/0714_scene_liupanshan/output
+/home/vrlab/hongyu/data/0714_scene_liupanshan/output
+/home/vrlab/hongyu/data/0714_scene_liupanshan/output
+/home/vrlab/hongyu/data/0714_scene_liupanshan/output
+Output folder: ./output/84010a77-a
+Output folder: ./output/df79625b-b
+Output folder: ./output/043e7a64-c
+[ITER 7000] Evaluating train: L1 0.014334371499717237 PSNR 30.49214782714844
+[ITER 30000] Evaluating train: L1 0.008463886566460133 PSNR 35.111646270751955
+Output folder: ./output/82287e38-e
+Output folder: ./output/79f498e9-b
+/home/vrlab/hongyu/calli/output
+/home/vrlab/hongyu/calli/output
+/home/vrlab/hongyu/zqx/output
+/home/vrlab/hongyu/data/0716_scene_chengqiangmen/output
+/home/vrlab/hongyu/data/0714_scene_liupanshan/output
+/home/vrlab/hezhpl/gaussian_data/liupanshui/out/
+/home/vrlab/hezhpl/gaussian_data/museum/out/
+/home/vrlab/hezhpl/gaussian_data/museum/out/
+/home/vrlab/hezhpl/gaussian_data/museum/out/
+/home/vrlab/hezhpl/gaussian_data/chengqiangta/out/
+/mnt/new_disk3/neubackend/database/userdata/10beba23-2acc-48ac-b0f8-5a05d1a7a411/0a4b50f8-6cfa-4b9b-96d8-1409a8aa376f/upload/agi2colmap_output
+/mnt/new_disk3/neubackend/database/userdata/10beba23-2acc-48ac-b0f8-5a05d1a7a411/0a4b50f8-6cfa-4b9b-96d8-1409a8aa376f/upload/images/out
+/mnt/new_disk3/neubackend/database/userdata/10beba23-2acc-48ac-b0f8-5a05d1a7a411/0a4b50f8-6cfa-4b9b-96d8-1409a8aa376f/upload/images/out
+/mnt/new_disk3/neubackend/database/userdata/10beba23-2acc-48ac-b0f8-5a05d1a7a411/0a4b50f8-6cfa-4b9b-96d8-1409a8aa376f/upload/images/out
+/mnt/new_disk3/neubackend/database/userdata/10beba23-2acc-48ac-b0f8-5a05d1a7a411/0a4b50f8-6cfa-4b9b-96d8-1409a8aa376f/upload/images/out
+/mnt/new_disk3/neubackend/database/userdata/10beba23-2acc-48ac-b0f8-5a05d1a7a411/0a4b50f8-6cfa-4b9b-96d8-1409a8aa376f/upload/images/out
+/mnt/new_disk3/neubackend/database/userdata/10beba23-2acc-48ac-b0f8-5a05d1a7a411/0a4b50f8-6cfa-4b9b-96d8-1409a8aa376f/upload/images/out
+Output folder: ./output/bce2d194-d
+[ITER 7000] Evaluating train: L1 0.004104386176913977 PSNR 29.44737892150879
+[ITER 30000] Evaluating train: L1 0.002666471339762211 PSNR 31.511471557617188
+Output folder: ./output/372a6912-d
+[ITER 7000] Evaluating train: L1 0.03169261682778597 PSNR 19.147576332092285
+Output folder: ./output/97e1cced-0
+[ITER 7000] Evaluating train: L1 0.004103792738169432 PSNR 29.435733032226565
+[ITER 30000] Evaluating train: L1 0.0026583081111311913 PSNR 31.51507606506348
+Output folder: ./output/2837f34a-3
+Output folder: ./output/36aaa406-a
+Output folder: ./output/c9a92c61-5
+Output folder: ./output/14422f11-2
+Output folder: ./output/9470a4ee-d
+Output folder: ./output/a4de4dce-2
+[ITER 7000] Evaluating train: L1 0.004097776766866445 PSNR 29.44222412109375
+Output folder: /mnt/new_disk3/neubackend/database/userdata/10beba23-2acc-48ac-b0f8-5a05d1a7a411/c1c40a86-7abb-4922-be89-cf3c25127bda/upload/colmap_gaussian
+Output folder: /mnt/new_disk3/neubackend/database/userdata/10beba23-2acc-48ac-b0f8-5a05d1a7a411/c1c40a86-7abb-4922-be89-cf3c25127bda/upload/colmap_gaussian
+[ITER 7000] Evaluating train: L1 0.01338097583502531 PSNR 23.838977050781253
+[ITER 30000] Evaluating train: L1 0.01165286498144269 PSNR 24.798491668701175
+Output folder: /mnt/new_disk3/neubackend/database/userdata/10beba23-2acc-48ac-b0f8-5a05d1a7a411/c1c40a86-7abb-4922-be89-cf3c25127bda/upload/colmap_gaussian
+Output folder: /mnt/new_disk3/neubackend/database/userdata/10beba23-2acc-48ac-b0f8-5a05d1a7a411/c1c40a86-7abb-4922-be89-cf3c25127bda/upload/colmap_gaussian
+[ITER 7000] Evaluating train: L1 0.013109034858644009 PSNR 23.96441688537598
+[ITER 30000] Evaluating train: L1 0.011547192092984916 PSNR 24.8523494720459
