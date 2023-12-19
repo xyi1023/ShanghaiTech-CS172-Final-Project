@@ -73,6 +73,18 @@ def load_K_Rt_from_P(filename, P=None):
 
     return K, pose
 
+def rotmat2qvec(R):
+    Rxx, Ryx, Rzx, Rxy, Ryy, Rzy, Rxz, Ryz, Rzz = R.flat
+    K = np.array([
+        [Rxx - Ryy - Rzz, 0, 0, 0],
+        [Ryx + Rxy, Ryy - Rxx - Rzz, 0, 0],
+        [Rzx + Rxz, Rzy + Ryz, Rzz - Rxx - Ryy, 0],
+        [Ryz - Rzy, Rzx - Rxz, Rxy - Ryx, Rxx + Ryy + Rzz]]) / 3.0
+    eigvals, eigvecs = np.linalg.eigh(K)
+    qvec = eigvecs[[3, 0, 1, 2], np.argmax(eigvals)]
+    if qvec[0] < 0:
+        qvec *= -1
+    return qvec
 
 def getNerfppNorm(cam_info):
     def get_center_and_diag(cam_centers):
@@ -266,6 +278,119 @@ def readCamerasFromTransforms(path, transformsfile, white_background, extension=
 
     return cam_infos
 
+def readNerfiesCameras(path):
+    with open(f'{path}/scene.json', 'r') as f:
+        scene_json = json.load(f)
+    with open(f'{path}/metadata.json', 'r') as f:
+        meta_json = json.load(f)
+    with open(f'{path}/dataset.json', 'r') as f:
+        dataset_json = json.load(f)
+
+    coord_scale = scene_json['scale']
+    scene_center = scene_json['center']
+
+    name = path.split('/')[-2]
+    if name.startswith('vrig'):
+        train_img = dataset_json['train_ids']
+        val_img = dataset_json['val_ids']
+        all_img = train_img + val_img
+        ratio = 0.25
+    elif name.startswith('NeRF'):
+        train_img = dataset_json['train_ids']
+        val_img = dataset_json['val_ids']
+        all_img = train_img + val_img
+        ratio = 1.0
+    elif name.startswith('interp'):
+        all_id = dataset_json['ids']
+        train_img = all_id[::4]
+        val_img = all_id[2::4]
+        all_img = train_img + val_img
+        ratio = 0.5
+    else:  # for hypernerf
+        train_img = dataset_json['ids'][::4]
+        all_img = train_img
+        ratio = 0.5
+
+    train_num = len(train_img)
+
+    all_cam = [meta_json[i]['camera_id'] for i in all_img]
+    all_time = [meta_json[i]['time_id'] for i in all_img]
+    max_time = max(all_time)
+    all_time = [meta_json[i]['time_id'] / max_time for i in all_img]
+    selected_time = set(all_time)
+
+    # all poses
+    all_cam_params = []
+    for im in all_img:
+        camera = camera_nerfies_from_JSON(f'{path}/camera/{im}.json', ratio)
+        camera['position'] = camera['position'] - scene_center
+        camera['position'] = camera['position'] * coord_scale
+        all_cam_params.append(camera)
+
+    all_img = [f'{path}/rgb/{int(1 / ratio)}x/{i}.png' for i in all_img]
+
+    cam_infos = []
+    for idx in range(len(all_img)):
+        image_path = all_img[idx]
+        image = np.array(Image.open(image_path))
+        image = Image.fromarray((image).astype(np.uint8))
+        image_name = Path(image_path).stem
+
+        orientation = all_cam_params[idx]['orientation'].T
+        position = -all_cam_params[idx]['position'] @ orientation
+        focal = all_cam_params[idx]['focal_length']
+        fid = all_time[idx]
+        T = position
+        R = orientation
+
+        FovY = focal2fov(focal, image.size[1])
+        FovX = focal2fov(focal, image.size[0])
+        cam_info = CameraInfo(uid=idx, R=R, T=T, FovY=FovY, FovX=FovX, image=image,
+                              image_path=image_path, image_name=image_name, width=image.size[
+                                  0], height=image.size[1],
+                              fid=fid)
+        cam_infos.append(cam_info)
+
+    sys.stdout.write('\n')
+    return cam_infos, train_num, scene_center, coord_scale
+
+def readNerfiesInfo(path, eval):
+    print("Reading Nerfies Info")
+    cam_infos, train_num, scene_center, scene_scale = readNerfiesCameras(path)
+
+    if eval:
+        train_cam_infos = cam_infos[:train_num]
+        test_cam_infos = cam_infos[train_num:]
+    else:
+        train_cam_infos = cam_infos
+        test_cam_infos = []
+
+    nerf_normalization = getNerfppNorm(train_cam_infos)
+
+    ply_path = os.path.join(path, "points3d.ply")
+    if not os.path.exists(ply_path):
+        print(f"Generating point cloud from nerfies...")
+
+        xyz = np.load(os.path.join(path, "points.npy"))
+        xyz = (xyz - scene_center) * scene_scale
+        num_pts = xyz.shape[0]
+        shs = np.random.random((num_pts, 3)) / 255.0
+        pcd = BasicPointCloud(points=xyz, colors=SH2RGB(
+            shs), normals=np.zeros((num_pts, 3)))
+
+        storePly(ply_path, xyz, SH2RGB(shs) * 255)
+    try:
+        pcd = fetchPly(ply_path)
+    except:
+        pcd = None
+
+    scene_info = SceneInfo(point_cloud=pcd,
+                           train_cameras=train_cam_infos,
+                           test_cameras=test_cam_infos,
+                           nerf_normalization=nerf_normalization,
+                           ply_path=ply_path)
+    return scene_info
+
 
 def readNerfSyntheticInfo(path, white_background, eval, extension=".png"):
     print("Reading Training Transforms")
@@ -305,7 +430,77 @@ def readNerfSyntheticInfo(path, white_background, eval, extension=".png"):
                            nerf_normalization=nerf_normalization,
                            ply_path=ply_path)
     return scene_info
+
+
+def readCamerasFromTransforms_ours(path, transformsfile, white_background, extension=".png"):
+    cam_infos = []
+
+    with open(os.path.join(path, transformsfile)) as json_file:
+        contents = json.load(json_file)
+        frames = contents["frames"]
+        cur_K = None
+        for idx, frame in enumerate(frames):
+            cam_name = os.path.join(path, frame["file_path"])
+            flip_mat = np.array([
+                [1, 0, 0, 0],
+                [0, -1, 0, 0],
+                [0, 0, -1, 0],
+                [0, 0, 0, 1]
+            ])
+            matrix = np.linalg.inv(np.matmul(np.array(frame["transform_matrix"]), flip_mat))
+            R = np.transpose(qvec2rotmat(-rotmat2qvec(matrix[:3,:3])))
+            T = matrix[:3, 3] 
+            image_path = os.path.join(path, cam_name)
+            image_name = Path(cam_name).stem
+            image = Image.open(image_path)
+            
+            cur_K = np.array(frame["K"]).reshape(3,3)
+            FovY = focal2fov(cur_K[1][1], image.size[1])
+            FovX = focal2fov(cur_K[0][0], image.size[0])
+
+            cam_infos.append(CameraInfo(uid=idx, R=R, T=T, FovY=FovY, FovX=FovX, image=image,
+                            image_path=image_path, image_name=image_name, width=image.size[0], height=image.size[1]))
+            
+    return cam_infos
+
+def readOursNGPInfo(path, white_background, eval, extension=".png"):
+    print("Reading Training Transforms")
+    train_cam_infos = readCamerasFromTransforms_ours(
+        path, "transforms.json", white_background, extension)
+
+    if not eval:
+        train_cam_infos.extend(test_cam_infos)
+        test_cam_infos = []
+
+    nerf_normalization = getNerfppNorm(train_cam_infos)
+
+    ply_path = os.path.join(path, "points3d.ply")
+    if not os.path.exists(ply_path):
+        # Since this data set has no colmap data, we start with random points
+        num_pts = 100_000
+        print(f"Generating random point cloud ({num_pts})...")
+
+        # We create random points inside the bounds of the synthetic Blender scenes
+        xyz = np.random.random((num_pts, 3)) * 2.6 - 1.3
+        shs = np.random.random((num_pts, 3)) / 255.0
+        pcd = BasicPointCloud(points=xyz, colors=SH2RGB(
+            shs), normals=np.zeros((num_pts, 3)))
+        storePly(ply_path, xyz, SH2RGB(shs) * 255)
+    try:
+        pcd = fetchPly(ply_path)
+    except:
+        pcd = None
+
+    scene_info = SceneInfo(point_cloud=pcd,
+                           train_cameras=train_cam_infos,
+                           test_cameras=test_cam_infos,
+                           nerf_normalization=nerf_normalization,
+                           ply_path=ply_path)
+    return scene_info
+
 sceneLoadTypeCallbacks = {
     "Colmap": readColmapSceneInfo, 
     "Blender": readNerfSyntheticInfo, 
+    "nerfies": readNerfiesInfo,
+    "oursngp": readOursNGPInfo,
 }
