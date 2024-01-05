@@ -31,10 +31,12 @@ except ImportError:
     TENSORBOARD_FOUND = False
 
 
-def training(dataset, opt, pipe, testing_iterations, saving_iterations):
+def training(dataset, opt, pipe, testing_iterations, saving_iterations,flow_folder):
     tb_writer = prepare_output_and_logger(dataset)
     gaussians = GaussianModel(dataset.sh_degree)
     deform = DeformModel(dataset.is_blender, dataset.is_6dof)
+    if(flow_folder != ""):
+        pass
     deform.train_setting(opt)
 
     scene = Scene(dataset, gaussians)
@@ -260,6 +262,7 @@ if __name__ == "__main__":
                         default=[5000, 6000, 7_000] + list(range(10000, 40001, 1000)))
     parser.add_argument("--save_iterations", nargs="+", type=int, default=[7_000, 10_000, 20_000, 30_000, 40000])
     parser.add_argument("--quiet", action="store_true")
+    parser.add_argument("--flow_folder",type=str,default="")
     args = parser.parse_args(sys.argv[1:])
     args.save_iterations.append(args.iterations)
 
@@ -271,7 +274,7 @@ if __name__ == "__main__":
     # Start GUI server, configure and run training
     # network_gui.init(args.ip, args.port)
     torch.autograd.set_detect_anomaly(args.detect_anomaly)
-    training(lp.extract(args), op.extract(args), pp.extract(args), args.test_iterations, args.save_iterations)
+    training(lp.extract(args), op.extract(args), pp.extract(args), args.test_iterations, args.save_iterations,args.flow_folder)
 
     # All done
     print("\nTraining complete.")

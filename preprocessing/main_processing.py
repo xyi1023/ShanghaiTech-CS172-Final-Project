@@ -24,8 +24,3 @@ if __name__ == '__main__':
     # filtering
     os.chdir('../RAFT')
     subprocess.run(['python', 'filter_raft.py', '--data_dir', args.data_dir, '--cycle_th', str(args.cycle_th)])
-
-    # chaining (optional)
-    subprocess.run(['python', 'chain_raft.py', '--data_dir', args.data_dir])
-
-
