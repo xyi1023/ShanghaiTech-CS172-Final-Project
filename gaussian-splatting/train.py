@@ -8,7 +8,7 @@
 #
 # For inquiries contact  george.drettakis@inria.fr
 #
-
+import json
 import os
 import torch
 from random import randint
@@ -22,7 +22,7 @@ from tqdm import tqdm
 from utils.image_utils import psnr
 from argparse import ArgumentParser, Namespace
 from arguments import ModelParams, PipelineParams, OptimizationParams
-
+import numpy as np
 try:
     from torch.utils.tensorboard import SummaryWriter
 
@@ -32,14 +32,24 @@ except ImportError:
 
 
 def training(dataset, opt, pipe, testing_iterations, saving_iterations,flow_folder):
+    with open(f"{dataset.source_path}/dataset.json","r") as f:
+        scene_infomation = json.load(f)
+    
     tb_writer = prepare_output_and_logger(dataset)
     gaussians = GaussianModel(dataset.sh_degree)
     deform = DeformModel(dataset.is_blender, dataset.is_6dof)
-    if(flow_folder != ""):
-        pass
+    tracking_flow_dictionary = {}
+
     deform.train_setting(opt)
 
     scene = Scene(dataset, gaussians)
+    # if Nerfies dataset(we adjust all dataset as the format of Nerfies dataset)
+    
+    if(flow_folder != ""):
+        print("Read In Flow Information!")
+        for i in range(len(scene_infomation["ids"])-1):
+            flow_data = np.load("{}/{}.png_{}.png.npy".format(flow_folder,scene_infomation["ids"][i],scene_infomation["ids"][i+1]))
+            tracking_flow_dictionary["{}_{}".format(i,i+1)] = flow_data
     gaussians.training_setup(opt)
 
     bg_color = [1, 1, 1] if dataset.white_background else [0, 0, 0]
@@ -55,21 +65,21 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations,flow_fold
     progress_bar = tqdm(range(opt.iterations), desc="Training progress")
     smooth_term = get_linear_noise_func(lr_init=0.1, lr_final=1e-15, lr_delay_mult=0.01, max_steps=20000)
     for iteration in range(1, opt.iterations + 1):
-        if network_gui.conn == None:
-            network_gui.try_connect()
-        while network_gui.conn != None:
-            try:
-                net_image_bytes = None
-                custom_cam, do_training, pipe.do_shs_python, pipe.do_cov_python, keep_alive, scaling_modifer = network_gui.receive()
-                if custom_cam != None:
-                    net_image = render(custom_cam, gaussians, pipe, background, scaling_modifer)["render"]
-                    net_image_bytes = memoryview((torch.clamp(net_image, min=0, max=1.0) * 255).byte().permute(1, 2,
-                                                                                                               0).contiguous().cpu().numpy())
-                network_gui.send(net_image_bytes, dataset.source_path)
-                if do_training and ((iteration < int(opt.iterations)) or not keep_alive):
-                    break
-            except Exception as e:
-                network_gui.conn = None
+        # if network_gui.conn == None:
+        #     network_gui.try_connect()
+        # while network_gui.conn != None:
+        #     try:
+        #         net_image_bytes = None
+        #         custom_cam, do_training, pipe.do_shs_python, pipe.do_cov_python, keep_alive, scaling_modifer = network_gui.receive()
+        #         if custom_cam != None:
+        #             net_image = render(custom_cam, gaussians, pipe, background, scaling_modifer)["render"]
+        #             net_image_bytes = memoryview((torch.clamp(net_image, min=0, max=1.0) * 255).byte().permute(1, 2,
+        #                                                                                                        0).contiguous().cpu().numpy())
+        #         network_gui.send(net_image_bytes, dataset.source_path)
+        #         if do_training and ((iteration < int(opt.iterations)) or not keep_alive):
+        #             break
+        #     except Exception as e:
+        #         network_gui.conn = None
 
         iter_start.record()
 
@@ -85,6 +95,7 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations,flow_fold
         time_interval = 1 / total_frame
 
         viewpoint_cam = viewpoint_stack.pop(randint(0, len(viewpoint_stack) - 1))
+        print(viewpoint_cam.image_name)
         if dataset.load2gpu_on_the_fly:
             viewpoint_cam.load2device()
         fid = viewpoint_cam.fid
