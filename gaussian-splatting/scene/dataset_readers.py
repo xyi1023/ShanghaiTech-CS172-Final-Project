@@ -35,7 +35,9 @@ class CameraInfo(NamedTuple):
     FovY: np.array
     FovX: np.array
     image: np.array
+    depth: np.array
     image_path: str
+    depth_path: str
     image_name: str
     width: int
     height: int
@@ -330,14 +332,16 @@ def readNerfiesCameras(path):
         all_cam_params.append(camera)
 
     all_img = [f'{path}/rgb/{int(1 / ratio)}x/{i}.png' for i in all_img]
-
+    all_depth = [f'{path}/depth/{int(1 / ratio)}x/{i}.png' for i in all_img]
     cam_infos = []
     for idx in range(len(all_img)):
         image_path = all_img[idx]
+        depth_path = all_depth[idx]
         image = np.array(Image.open(image_path))
+        depth = np.array(Image.open(depth_path))
         image = Image.fromarray((image).astype(np.uint8))
+        depth = Image.fromarray((depth).astype(np.uint8))
         image_name = Path(image_path).stem
-
         orientation = all_cam_params[idx]['orientation'].T
         position = -all_cam_params[idx]['position'] @ orientation
         focal = all_cam_params[idx]['focal_length']
@@ -347,8 +351,8 @@ def readNerfiesCameras(path):
 
         FovY = focal2fov(focal, image.size[1])
         FovX = focal2fov(focal, image.size[0])
-        cam_info = CameraInfo(uid=idx, R=R, T=T, FovY=FovY, FovX=FovX, image=image,
-                              image_path=image_path, image_name=image_name, width=image.size[
+        cam_info = CameraInfo(uid=idx, R=R, T=T, FovY=FovY, FovX=FovX, image=image,depth=depth,
+                              image_path=image_path,depth_path=depth_path, image_name=image_name, width=image.size[
                                   0], height=image.size[1],
                               fid=fid)
         cam_infos.append(cam_info)
