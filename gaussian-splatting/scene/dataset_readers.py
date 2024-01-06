@@ -35,9 +35,8 @@ class CameraInfo(NamedTuple):
     FovY: np.array
     FovX: np.array
     image: np.array
-    depth: np.array
     image_path: str
-    depth_path: str
+    # depth_path: Optional[str] = ""
     image_name: str
     width: int
     height: int
@@ -52,6 +51,8 @@ class SceneInfo(NamedTuple):
     nerf_normalization: dict
     ply_path: str
 
+def calculate_camera_angle_x(image_width, f_x):
+    return 2 * np.arctan(image_width / (2 * f_x))
 
 def load_K_Rt_from_P(filename, P=None):
     if P is None:
@@ -159,11 +160,19 @@ def fetchPly(path):
     plydata = PlyData.read(path)
     vertices = plydata['vertex']
     positions = np.vstack([vertices['x'], vertices['y'], vertices['z']]).T
-    colors = np.vstack([vertices['red'], vertices['green'],
-                       vertices['blue']]).T / 255.0
-    normals = np.vstack([vertices['nx'], vertices['ny'], vertices['nz']]).T
-    return BasicPointCloud(points=positions, colors=colors, normals=normals)
 
+    print(positions.shape)
+    try:
+        colors = np.vstack([vertices['red'], vertices['green'], vertices['blue']]).T / 255.0
+    except:
+        colors = positions * 0
+
+    try:
+        normals = np.vstack([vertices['nx'], vertices['ny'], vertices['nz']]).T
+    except:
+        normals = positions * 0
+
+    return BasicPointCloud(points=positions, colors=colors, normals=normals)
 
 def storePly(path, xyz, rgb):
     # Define the dtype for the structured array
@@ -234,12 +243,13 @@ def readColmapSceneInfo(path, images, eval, llffhold=8):
     return scene_info
 
 
-def readCamerasFromTransforms(path, transformsfile, white_background, extension=".png"):
+def readCamerasFromTransforms(path, transformsfile, white_background, extension=""):
     cam_infos = []
 
     with open(os.path.join(path, transformsfile)) as json_file:
         contents = json.load(json_file)
-        fovx = contents["camera_angle_x"]
+        # fovx = contents["camera_angle_x"]
+        fovx = calculate_camera_angle_x(2*contents["K"][0][2], contents["K"][0][0])
 
         frames = contents["frames"]
         for idx, frame in enumerate(frames):
@@ -247,7 +257,7 @@ def readCamerasFromTransforms(path, transformsfile, white_background, extension=
             # add this to modify time
             frame_time = frame['time']
 
-            matrix = np.linalg.inv(np.array(frame["transform_matrix"]))
+            matrix = np.linalg.inv(np.array(contents["transform_matrix"]))
             R = -np.transpose(matrix[:3, :3])
             R[:, 0] = -R[:, 0]
             T = -matrix[:3, 3]
@@ -398,7 +408,7 @@ def readNerfiesInfo(path, eval):
     return scene_info
 
 
-def readNerfSyntheticInfo(path, white_background, eval, extension=".png"):
+def readNerfSyntheticInfo(path, white_background, eval, extension=""):
     print("Reading Training Transforms")
     train_cam_infos = readCamerasFromTransforms(
         path, "transforms_train.json", white_background, extension)
@@ -412,7 +422,7 @@ def readNerfSyntheticInfo(path, white_background, eval, extension=".png"):
 
     nerf_normalization = getNerfppNorm(train_cam_infos)
 
-    ply_path = os.path.join(path, "points3d.ply")
+    ply_path = os.path.join(path, "points3D.ply")
     if not os.path.exists(ply_path):
         # Since this data set has no colmap data, we start with random points
         num_pts = 100_000

@@ -32,8 +32,11 @@ except ImportError:
 
 
 def training(dataset, opt, pipe, testing_iterations, saving_iterations,flow_folder):
-    with open(f"{dataset.source_path}/dataset.json","r") as f:
-        scene_infomation = json.load(f)
+    try:
+        with open(f"{dataset.source_path}/dataset.json","r") as f:
+            scene_infomation = json.load(f)
+    except:
+        scene_infomation = None
     
     tb_writer = prepare_output_and_logger(dataset)
     gaussians = GaussianModel(dataset.sh_degree)
@@ -95,7 +98,6 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations,flow_fold
         time_interval = 1 / total_frame
 
         viewpoint_cam = viewpoint_stack.pop(randint(0, len(viewpoint_stack) - 1))
-        print(viewpoint_cam.image_name)
         if dataset.load2gpu_on_the_fly:
             viewpoint_cam.load2device()
         fid = viewpoint_cam.fid
