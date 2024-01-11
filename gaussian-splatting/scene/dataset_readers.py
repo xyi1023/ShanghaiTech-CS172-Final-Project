@@ -36,12 +36,14 @@ class CameraInfo(NamedTuple):
     FovX: np.array
     image: np.array
     image_path: str
-    # depth_path: Optional[str] = ""
+    depth_name: str
+    depth_path: Optional[str] = None
     image_name: str
     width: int
     height: int
     fid: float
     depth: Optional[np.array] = None
+    raft_path: Optional[str] = None
 
 
 class SceneInfo(NamedTuple):
@@ -254,6 +256,7 @@ def readCamerasFromTransforms(path, transformsfile, white_background, extension=
         frames = contents["frames"]
         for idx, frame in enumerate(frames):
             cam_name = os.path.join(path, frame["file_path"] + extension)
+            dep_name = os.path.join(path,frame["depth_path"] + extension)
             # add this to modify time
             frame_time = frame['time']
 
@@ -263,10 +266,17 @@ def readCamerasFromTransforms(path, transformsfile, white_background, extension=
             T = -matrix[:3, 3]
 
             image_path = os.path.join(path, cam_name)
+            depth_path = os.path.join(path, dep_name)
             image_name = Path(cam_name).stem
+            depth_name = Path(dep_name).stem 
             image = Image.open(image_path)
-
+            depth = Image.open(depth_name)
             im_data = np.array(image.convert("RGBA"))
+            dp_data = np.array(depth)
+            #vis the dp_data
+            cv.imshow('image',dp_data)
+            cv.waitKey(0)
+            cv.destroyAllWindows()
 
             bg = np.array(
                 [1, 1, 1]) if white_background else np.array([0, 0, 0])
@@ -283,10 +293,9 @@ def readCamerasFromTransforms(path, transformsfile, white_background, extension=
             FovY = fovx
             FovX = fovy
 
-            cam_infos.append(CameraInfo(uid=idx, R=R, T=T, FovY=FovY, FovX=FovX, image=image,
-                                        image_path=image_path, image_name=image_name, width=image.size[
-                                            0],
-                                        height=image.size[1], fid=frame_time))
+            cam_infos.append(CameraInfo(uid=idx, R=R, T=T, FovY=FovY, FovX=FovX, image=image,depth=dp_data,depth_name=depth_name,depth_path=depth_path,
+                                        image_path=image_path, image_name=image_name, width=image.size[0],
+                                        height=image.size[1], fid=frame_time,raft_path = contents["flow_path"]))
 
     return cam_infos
 
@@ -427,7 +436,6 @@ def readNerfSyntheticInfo(path, white_background, eval, extension=""):
         # Since this data set has no colmap data, we start with random points
         num_pts = 100_000
         print(f"Generating random point cloud ({num_pts})...")
-
         # We create random points inside the bounds of the synthetic Blender scenes
         xyz = np.random.random((num_pts, 3)) * 2.6 - 1.3
         shs = np.random.random((num_pts, 3)) / 255.0
