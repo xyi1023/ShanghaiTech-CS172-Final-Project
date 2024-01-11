@@ -29,6 +29,33 @@ try:
     TENSORBOARD_FOUND = True
 except ImportError:
     TENSORBOARD_FOUND = False
+def FlowDeformation(flow, xyz,camera,depth,canonical_depth):
+    homogeneous_voxel_centers = np.hstack([xyz, np.ones((xyz.shape[0], 1))])
+    camera_angle_X = camera["camera_angle_x"]
+    fx = 0.5 * camera["w"]/ np.tan(0.5 * camera_angle_X)
+    fy = 0.5 * camera["h"]/ np.tan(0.5 * camera_angle_X)
+    K = np.array([[fx,0,camera["cx"]],[0,fy,camera["cy"]],[0,0,1]])
+    RT = np.array(camera["transform_matrix"]) #which is a 4*4 matrix
+    RT[...,1]*=-1
+    RT[...,2]*=-1
+    RT = np.linalg.inv(RT)
+    # convert it to 4*3 matrix
+    RT = RT[:3,:]
+    # to camera coordinate
+    voxel_in_camera_coord = np.dot(RT, homogeneous_voxel_centers.T).T
+    # to pixel coordinate
+    voxel_in_pixel_coord = np.dot(K, voxel_in_camera_coord.T).T
+    # normalize
+    voxel_in_pixel_coord[:, 0] /= voxel_in_pixel_coord[:, 2]
+    voxel_in_pixel_coord[:, 1] /= voxel_in_pixel_coord[:, 2]
+    # round
+    voxel_in_pixel_coord = np.round(voxel_in_pixel_coord).astype(int)
+    x = voxel_in_pixel_coord[:,0]
+    y = voxel_in_pixel_coord[:,1]
+    valid_indices = (y < camera["h"]) & (x < camera["w"]) & (y >= 0) & (x >= 0)
+    dx,dy = flow[voxel_in_pixel_coord[:, 1][valid_indices], voxel_in_pixel_coord[:, 0][valid_indices]]
+    dz = depth[voxel_in_pixel_coord[:, 1][valid_indices]+dy, voxel_in_pixel_coord[:, 0][valid_indices]+dx] -canonical_depth[voxel_in_pixel_coord[:, 1][valid_indices], voxel_in_pixel_coord[:, 0][valid_indices]]
+    return dx,dy,dz
 
 
 def training(dataset, opt, pipe, testing_iterations, saving_iterations,flow_folder):
@@ -37,6 +64,8 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations,flow_fold
             scene_infomation = json.load(f)
     except:
         scene_infomation = None
+    with open("{}/transforms_train.json".format(dataset.source_path), "r") as f:
+        cam_info = json.load(f)
     print(scene_infomation)
     tb_writer = prepare_output_and_logger(dataset)
     gaussians = GaussianModel(dataset.sh_degree)
@@ -107,7 +136,8 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations,flow_fold
         else:
             N = gaussians.get_xyz.shape[0]
             time_input = fid.unsqueeze(0).expand(N, -1)
-
+            # pre_cal_xyz = FlowDeformation
+            # def FlowDeformation(flow, xyz,camera,depth,canonical_depth):
             ast_noise = 0 if dataset.is_blender else torch.randn(1, 1, device='cuda').expand(N, -1) * time_interval * smooth_term(iteration)
             d_xyz, d_rotation, d_scaling = deform.step(gaussians.get_xyz.detach(), time_input + ast_noise)
 

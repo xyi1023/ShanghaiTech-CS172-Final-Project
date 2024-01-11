@@ -37,11 +37,11 @@ class CameraInfo(NamedTuple):
     image: np.array
     image_path: str
     depth_name: str
-    depth_path: Optional[str] = None
     image_name: str
     width: int
     height: int
     fid: float
+    depth_path: Optional[str] = None
     depth: Optional[np.array] = None
     raft_path: Optional[str] = None
 
@@ -270,13 +270,16 @@ def readCamerasFromTransforms(path, transformsfile, white_background, extension=
             image_name = Path(cam_name).stem
             depth_name = Path(dep_name).stem 
             image = Image.open(image_path)
-            depth = Image.open(depth_name)
+            print(depth_path)
+            depth = np.load(depth_path)
             im_data = np.array(image.convert("RGBA"))
-            dp_data = np.array(depth)
-            #vis the dp_data
-            cv.imshow('image',dp_data)
-            cv.waitKey(0)
-            cv.destroyAllWindows()
+            # print(depth.max())
+            # print(depth.mean())
+            dp_data = depth/100.0
+            # #vis the dp_data
+            # cv.imshow('image',dp_data)
+            # cv.waitKey(0)
+            # cv.destroyAllWindows()
 
             bg = np.array(
                 [1, 1, 1]) if white_background else np.array([0, 0, 0])
