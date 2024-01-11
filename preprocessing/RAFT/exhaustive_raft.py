@@ -48,44 +48,44 @@ def run_exhaustive_flow(args):
     num_imgs = len(img_files)
     pbar = tqdm(total=num_imgs*2)
     with torch.no_grad():
-        # for i in range(num_imgs - 1):
-        #     flow_low_prev = None
-        #     for j in range(i + 1, num_imgs):
-        #         imfile1 = img_files[i]
-        #         imfile2 = img_files[j]
-        #         image1 = load_image(imfile1)
-        #         image2 = load_image(imfile2)
+        for i in range(num_imgs - 1):
+            flow_low_prev = None
+            for j in range(i + 1, num_imgs):
+                imfile1 = img_files[i]
+                imfile2 = img_files[j]
+                image1 = load_image(imfile1)
+                image2 = load_image(imfile2)
 
-        #         padder = InputPadder(image1.shape)
-        #         image1, image2 = padder.pad(image1, image2)
+                padder = InputPadder(image1.shape)
+                image1, image2 = padder.pad(image1, image2)
 
-        #         flow_low, flow_up = model(image1, image2, iters=20, test_mode=True, flow_init=flow_low_prev)
-        #         flow_up = padder.unpad(flow_up)
+                flow_low, flow_up = model(image1, image2, iters=20, test_mode=True, flow_init=flow_low_prev)
+                flow_up = padder.unpad(flow_up)
 
-        #         flow_up_np = flow_up.squeeze().permute(1, 2, 0).cpu().numpy()
-        #         save_file = os.path.join(flow_out_dir,
-        #                                  '{}_{}.npy'.format(os.path.basename(imfile1), os.path.basename(imfile2)))
-        #         np.save(save_file, flow_up_np)
-        #         flow_low_prev = flow_low
-        #         pbar.update(1)
+                flow_up_np = flow_up.squeeze().permute(1, 2, 0).cpu().numpy()
+                save_file = os.path.join(flow_out_dir,
+                                         '{}_{}.npy'.format(os.path.basename(imfile1), os.path.basename(imfile2)))
+                np.save(save_file, flow_up_np)
+                flow_low_prev = flow_low
+                pbar.update(1)
 
-        # for i in range(num_imgs - 1):
-        #     imfile1 = img_files[i]
-        #     imfile2 = img_files[i + 1]
+        for i in range(num_imgs - 1):
+            imfile1 = img_files[i]
+            imfile2 = img_files[i + 1]
 
-        #     image1 = load_image(imfile1)
-        #     image2 = load_image(imfile2)
+            image1 = load_image(imfile1)
+            image2 = load_image(imfile2)
 
-        #     padder = InputPadder(image1.shape)
-        #     image1, image2 = padder.pad(image1, image2)
+            padder = InputPadder(image1.shape)
+            image1, image2 = padder.pad(image1, image2)
 
-        #     flow_low, flow_up = model(image1, image2, iters=20, test_mode=True)
-        #     flow_up = padder.unpad(flow_up)
+            flow_low, flow_up = model(image1, image2, iters=20, test_mode=True)
+            flow_up = padder.unpad(flow_up)
 
-        #     flow_up_np = flow_up.squeeze().permute(1, 2, 0).cpu().numpy()
-        #     save_file = os.path.join(flow_out_dir, '{}_{}.npy'.format(os.path.basename(imfile1), os.path.basename(imfile2)))
-        #     np.save(save_file, flow_up_np)
-        #     pbar.update(1)
+            flow_up_np = flow_up.squeeze().permute(1, 2, 0).cpu().numpy()
+            save_file = os.path.join(flow_out_dir, '{}_{}.npy'.format(os.path.basename(imfile1), os.path.basename(imfile2)))
+            np.save(save_file, flow_up_np)
+            pbar.update(1)
         for i in range(num_imgs - 1,-1,-1):
             imfile1 = img_files[i]
             imfile2 = img_files[i - 1]

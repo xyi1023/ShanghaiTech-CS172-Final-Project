@@ -248,8 +248,8 @@ def readCamerasFromTransforms(path, transformsfile, white_background, extension=
 
     with open(os.path.join(path, transformsfile)) as json_file:
         contents = json.load(json_file)
-        # fovx = contents["camera_angle_x"]
-        fovx = calculate_camera_angle_x(2*contents["K"][0][2], contents["K"][0][0])
+        fovx = contents["camera_angle_x"]
+        # fovx = calculate_camera_angle_x(2*contents["K"][0][2], contents["K"][0][0])
 
         frames = contents["frames"]
         for idx, frame in enumerate(frames):
@@ -257,7 +257,7 @@ def readCamerasFromTransforms(path, transformsfile, white_background, extension=
             # add this to modify time
             frame_time = frame['time']
 
-            matrix = np.linalg.inv(np.array(contents["transform_matrix"]))
+            matrix = np.linalg.inv(np.array(frame["transform_matrix"]))
             R = -np.transpose(matrix[:3, :3])
             R[:, 0] = -R[:, 0]
             T = -matrix[:3, 3]

@@ -37,7 +37,7 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations,flow_fold
             scene_infomation = json.load(f)
     except:
         scene_infomation = None
-    
+    print(scene_infomation)
     tb_writer = prepare_output_and_logger(dataset)
     gaussians = GaussianModel(dataset.sh_degree)
     deform = DeformModel(dataset.is_blender, dataset.is_6dof)
@@ -51,7 +51,7 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations,flow_fold
     if(flow_folder != ""):
         print("Read In Flow Information!")
         for i in range(len(scene_infomation["ids"])-1):
-            flow_data = np.load("{}/{}.png_{}.png.npy".format(flow_folder,scene_infomation["ids"][i],scene_infomation["ids"][i+1]))
+            flow_data = np.load("{}/{}_{}.npy".format(flow_folder,scene_infomation["ids"][i],scene_infomation["ids"][i+1]))
             tracking_flow_dictionary["{}_{}".format(i,i+1)] = flow_data
     gaussians.training_setup(opt)
 
