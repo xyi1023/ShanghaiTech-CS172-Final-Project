@@ -95,6 +95,7 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations,flow_fold
     best_psnr = 0.0
     best_iteration = 0
     progress_bar = tqdm(range(opt.iterations), desc="Training progress")
+    canonical_depth = scene.getTrainCameras().copy().depth
     smooth_term = get_linear_noise_func(lr_init=0.1, lr_final=1e-15, lr_delay_mult=0.01, max_steps=20000)
     for iteration in range(1, opt.iterations + 1):
         # if network_gui.conn == None:
@@ -136,7 +137,7 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations,flow_fold
         else:
             N = gaussians.get_xyz.shape[0]
             time_input = fid.unsqueeze(0).expand(N, -1)
-            # pre_cal_xyz = FlowDeformation
+            pre_cal_xyz = FlowDeformation(flow,gaussians.get_xyz.detach().cpu().numpy(),cam_info[fid],viewpoint_cam.depth,canonical_depth)
             # def FlowDeformation(flow, xyz,camera,depth,canonical_depth):
             ast_noise = 0 if dataset.is_blender else torch.randn(1, 1, device='cuda').expand(N, -1) * time_interval * smooth_term(iteration)
             d_xyz, d_rotation, d_scaling = deform.step(gaussians.get_xyz.detach(), time_input + ast_noise)
