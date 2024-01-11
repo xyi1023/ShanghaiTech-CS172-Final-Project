@@ -295,7 +295,6 @@ def readCamerasFromTransforms(path, transformsfile, white_background, extension=
             fovy = focal2fov(fov2focal(fovx, image.size[0]), image.size[1])
             FovY = fovx
             FovX = fovy
-
             cam_infos.append(CameraInfo(uid=idx, R=R, T=T, FovY=FovY, FovX=FovX, image=image,depth=dp_data,depth_name=depth_name,depth_path=depth_path,
                                         image_path=image_path, image_name=image_name, width=image.size[0],
                                         height=image.size[1], fid=frame_time,raft_path = contents["flow_path"]))
@@ -428,7 +427,7 @@ def readNerfSyntheticInfo(path, white_background, eval, extension=""):
     test_cam_infos = readCamerasFromTransforms(
         path, "transforms_test.json", white_background, extension)
 
-    if not eval:
+    if False:
         train_cam_infos.extend(test_cam_infos)
         test_cam_infos = []
 
