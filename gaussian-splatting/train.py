@@ -8,6 +8,7 @@
 #
 # For inquiries contact  george.drettakis@inria.fr
 #
+from tqdm import tqdm 
 import json
 import os
 import torch
@@ -23,6 +24,7 @@ from utils.image_utils import psnr
 from argparse import ArgumentParser, Namespace
 from arguments import ModelParams, PipelineParams, OptimizationParams
 import numpy as np
+import cv2
 try:
     from torch.utils.tensorboard import SummaryWriter
 
@@ -33,8 +35,7 @@ def FlowDeformation(flow, xyz,camera,depth,canonical_depth):
     homogeneous_voxel_centers = np.hstack([xyz, np.ones((xyz.shape[0], 1))])
     camera_angle_X = camera["camera_angle_x"]
     fx = 0.5 * camera["w"]/ np.tan(0.5 * camera_angle_X)
-    fy = 0.5 * camera["h"]/ np.tan(0.5 * camera_angle_X)
-    K = np.array([[fx,0,camera["cx"]],[0,fy,camera["cy"]],[0,0,1]])
+    K = np.array([[fx,0,camera["cx"]],[0,fx,camera["cy"]],[0,0,1]])
     RT = np.array(camera["transform_matrix"]) #which is a 4*4 matrix
     RT[...,1]*=-1
     RT[...,2]*=-1
@@ -53,9 +54,31 @@ def FlowDeformation(flow, xyz,camera,depth,canonical_depth):
     x = voxel_in_pixel_coord[:,0]
     y = voxel_in_pixel_coord[:,1]
     valid_indices = (y < camera["h"]) & (x < camera["w"]) & (y >= 0) & (x >= 0)
-    dx,dy = flow[voxel_in_pixel_coord[:, 1][valid_indices], voxel_in_pixel_coord[:, 0][valid_indices]]
-    dz = depth[voxel_in_pixel_coord[:, 1][valid_indices]+dy, voxel_in_pixel_coord[:, 0][valid_indices]+dx] -canonical_depth[voxel_in_pixel_coord[:, 1][valid_indices], voxel_in_pixel_coord[:, 0][valid_indices]]
-    return dx,dy,dz
+    # print(valid_indices)
+    dxyz = np.zeros((xyz.shape[0],3))
+    answer = flow[voxel_in_pixel_coord[:, 1][valid_indices], voxel_in_pixel_coord[:, 0][valid_indices]]
+    filtered_voxel_in_pixel_coord = voxel_in_pixel_coord[valid_indices]
+
+    new_x = filtered_voxel_in_pixel_coord[:, 0] + answer[:, 0]
+    new_y = filtered_voxel_in_pixel_coord[:, 1] + answer[:, 1]
+    additional_valid_indices = (new_y < camera["h"]) & (new_x < camera["w"]) & (new_y >= 0) & (new_x >= 0)
+    new_x = new_x[additional_valid_indices]
+    new_y = new_y[additional_valid_indices]
+    dz = depth[new_y, new_x] - canonical_depth[filtered_voxel_in_pixel_coord[:, 1][additional_valid_indices], filtered_voxel_in_pixel_coord[:, 0][additional_valid_indices]]
+    dz = dz.cpu().numpy()
+    answer = answer[additional_valid_indices]
+    dx = answer[:,0] * dz
+    dy = answer[:,1] * dz
+    dvoxel_in_pixel_coord =np.linalg.inv(K) @ np.vstack([dx,dy,np.ones(new_x.shape[0])]) * dz
+    dRT = np.array(camera["transform_matrix"]) #which is a 4*4 matrix
+    dRT[...,1]*=-1
+    dRT[...,2]*=-1
+    dvoxel_in_camera_coord_homogeneous = np.vstack([dvoxel_in_pixel_coord, np.ones(new_x.shape[0])])
+    dvoxel_in_world_coord = np.dot(dRT, dvoxel_in_camera_coord_homogeneous)
+    dxyz_world = dvoxel_in_world_coord[:3, :].T
+    dxyz[valid_indices][additional_valid_indices, :] = dxyz_world
+    print(dxyz.shape)
+    return dxyz,True
 
 
 def training(dataset, opt, pipe, testing_iterations, saving_iterations,flow_folder):
@@ -82,6 +105,11 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations,flow_fold
         for i in range(len(scene_infomation["ids"])-1):
             flow_data = np.load("{}/{}_{}.npy".format(flow_folder,scene_infomation["ids"][i],scene_infomation["ids"][i+1]))
             tracking_flow_dictionary["{}_{}".format(i,i+1)] = flow_data
+    init_data = np.load("{}/{}_{}.npy".format(flow_folder,scene_infomation["ids"][0],scene_infomation["ids"][1]))
+    tracking_flow_list = [init_data for i in range(len(scene_infomation["ids"]))] 
+    for i in range(1,len(scene_infomation["ids"])):
+        for j in range(1,i):
+            tracking_flow_list[i] = tracking_flow_list[i] + tracking_flow_dictionary["{}_{}".format(j,j+1)]
     gaussians.training_setup(opt)
 
     bg_color = [1, 1, 1] if dataset.white_background else [0, 0, 0]
@@ -95,8 +123,15 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations,flow_fold
     best_psnr = 0.0
     best_iteration = 0
     progress_bar = tqdm(range(opt.iterations), desc="Training progress")
-    canonical_depth = scene.getTrainCameras().copy().depth
+    canonical_depth = scene.getTrainCameras().copy()[0].depth
     smooth_term = get_linear_noise_func(lr_init=0.1, lr_final=1e-15, lr_delay_mult=0.01, max_steps=20000)
+    Deformflow ={}
+    for i in tqdm(range(len(scene.getTrainCameras()))):
+        viewpoint_cam = scene.getTrainCameras().copy()[i]
+        camera_information = {"w":cam_info["w"],"h":cam_info["h"],"cx":cam_info["cx"],"cy":cam_info["cy"],"camera_angle_x":cam_info["camera_angle_x"],"transform_matrix":cam_info["frames"][viewpoint_cam.uid]["transform_matrix"]}
+
+        Deformflow[viewpoint_cam.uid] ,_= FlowDeformation(tracking_flow_list[viewpoint_cam.uid],gaussians.get_xyz.detach().cpu().numpy(),camera_information,viewpoint_cam.depth,canonical_depth)
+    print("Flow calculate finish!")
     for iteration in range(1, opt.iterations + 1):
         # if network_gui.conn == None:
         #     network_gui.try_connect()
@@ -126,8 +161,12 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations,flow_fold
 
         total_frame = len(viewpoint_stack)
         time_interval = 1 / total_frame
-
+        
         viewpoint_cam = viewpoint_stack.pop(randint(0, len(viewpoint_stack) - 1))
+        # print(viewpoint_stack[0].uid)
+        # for i in range(len(viewpoint_stack)):
+        #     print(viewpoint_stack[i].uid)
+        # exit()
         if dataset.load2gpu_on_the_fly:
             viewpoint_cam.load2device()
         fid = viewpoint_cam.fid
@@ -137,11 +176,24 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations,flow_fold
         else:
             N = gaussians.get_xyz.shape[0]
             time_input = fid.unsqueeze(0).expand(N, -1)
-            pre_cal_xyz = FlowDeformation(flow,gaussians.get_xyz.detach().cpu().numpy(),cam_info[fid],viewpoint_cam.depth,canonical_depth)
+            # print(len(cam_info["frames"]))
+            # print(cam_info["frames"][viewpoint_cam.uid])
+            # save the gaussian's points gaussians.get_xyz.detach().cpu().numpy()
+            pre_cal_xyz = Deformflow[viewpoint_cam.uid]#(tracking_flow_list[viewpoint_cam.uid],gaussians.get_xyz.detach().cpu().numpy(),camera_information,viewpoint_cam.depth,canonical_depth)
+            pre_cal_xyz_tensor = torch.from_numpy(pre_cal_xyz).to(gaussians.get_xyz.dtype)
+            pre_cal_xyz_tensor = pre_cal_xyz_tensor.to("cuda")
+            # print(pre_cal_xyz.shape)
             # def FlowDeformation(flow, xyz,camera,depth,canonical_depth):
             ast_noise = 0 if dataset.is_blender else torch.randn(1, 1, device='cuda').expand(N, -1) * time_interval * smooth_term(iteration)
-            d_xyz, d_rotation, d_scaling = deform.step(gaussians.get_xyz.detach(), time_input + ast_noise)
-
+            # if(flag):
+            warp_gaussian = pre_cal_xyz_tensor +gaussians.get_xyz
+            # else:
+                # warp_gaussian = gaussians.get_xyz
+            # d_xyz, d_rotation, d_scaling = deform.step(warp_gaussian, time_input + ast_noise)
+            d_xyz, d_rotation = deform.step(warp_gaussian, time_input + ast_noise)
+            d_scaling = 0.0
+            d_xyz = d_xyz + pre_cal_xyz_tensor
+        # print("Iteration {} - Viewpoint {} - Time {}".format(iteration, viewpoint_cam.image_name, fid))
         # Render
         render_pkg_re = render(viewpoint_cam, gaussians, pipe, background, d_xyz, d_rotation, d_scaling, dataset.is_6dof)
         image, viewspace_point_tensor, visibility_filter, radii = render_pkg_re["render"], render_pkg_re[
@@ -187,16 +239,16 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations,flow_fold
                 deform.save_weights(args.model_path, iteration)
 
             # Densification
-            if iteration < opt.densify_until_iter:
-                gaussians.add_densification_stats(viewspace_point_tensor, visibility_filter)
+            # if iteration < opt.densify_until_iter:
+            #     gaussians.add_densification_stats(viewspace_point_tensor, visibility_filter)
 
-                if iteration > opt.densify_from_iter and iteration % opt.densification_interval == 0:
-                    size_threshold = 20 if iteration > opt.opacity_reset_interval else None
-                    gaussians.densify_and_prune(opt.densify_grad_threshold, 0.005, scene.cameras_extent, size_threshold)
+            #     if iteration > opt.densify_from_iter and iteration % opt.densification_interval == 0:
+            #         size_threshold = 20 if iteration > opt.opacity_reset_interval else None
+            #         gaussians.densify_and_prune(opt.densify_grad_threshold, 0.005, scene.cameras_extent, size_threshold)
 
-                if iteration % opt.opacity_reset_interval == 0 or (
-                        dataset.white_background and iteration == opt.densify_from_iter):
-                    gaussians.reset_opacity()
+            #     if iteration % opt.opacity_reset_interval == 0 or (
+            #             dataset.white_background and iteration == opt.densify_from_iter):
+            #         gaussians.reset_opacity()
 
             # Optimizer step
             if iteration < opt.iterations:
@@ -211,6 +263,7 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations,flow_fold
 
 
 def prepare_output_and_logger(args):
+
     if not args.model_path:
         if os.getenv('OAR_JOB_ID'):
             unique_str = os.getenv('OAR_JOB_ID')
@@ -259,7 +312,8 @@ def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_i
                     fid = viewpoint.fid
                     xyz = scene.gaussians.get_xyz
                     time_input = fid.unsqueeze(0).expand(xyz.shape[0], -1)
-                    d_xyz, d_rotation, d_scaling = deform.step(xyz.detach(), time_input)
+                    d_xyz, d_rotation = deform.step(xyz.detach(), time_input)
+                    d_scaling =0.0
                     image = torch.clamp(
                         renderFunc(viewpoint, scene.gaussians, *renderArgs, d_xyz, d_rotation, d_scaling, is_6dof)["render"],
                         0.0, 1.0)

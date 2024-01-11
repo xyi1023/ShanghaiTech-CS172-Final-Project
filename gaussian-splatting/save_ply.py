@@ -24,7 +24,8 @@ def save_set(model_path, load2gpu_on_the_fly, is_6dof, name, iteration, views, g
         fid = view.fid
         xyz = gaussians.get_xyz
         time_input = fid.unsqueeze(0).expand(xyz.shape[0], -1)
-        d_xyz, d_rotation, d_scaling = deform.step(xyz.detach(), time_input)
+        d_xyz, d_rotation = deform.step(xyz.detach(), time_input)
+        d_scaling = 0.0
         gaussians.save_ply_deform(os.path.join(save_path, "{}.ply".format(idx)), d_xyz, d_rotation, d_scaling)
 
 
